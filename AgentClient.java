@@ -23,7 +23,7 @@ public class AgentClient {
                     System.out.println(message);
                 }
             } catch (IOException e) {
-                System.out.println(">> Disconnected from server.");
+                System.out.println(">> Apotheosis has been achieved.");
             }
         });
         listener.start();
