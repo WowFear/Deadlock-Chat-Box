@@ -9,6 +9,7 @@ public class LobbyServer {
     public static void main(String[] args) throws IOException {
         ServerSocket server = new ServerSocket(8080);
         System.out.println("Match server online. Waiting for agents...");
+        System.out.println(loadHistory().isEmpty() ? "No previous chat history." : "Chat history loaded.");
 
         while (true) {
             Socket clientSocket = server.accept();
@@ -18,34 +19,63 @@ public class LobbyServer {
 
     // This is the global chat that everyone will have access to to speak with one another
     public static synchronized void broadcastGlobal(String message) {
-        // Create a loop through the list of agents and send a message to each of them 
-        
+        // Create a loop through the list of agents and send a message to each of them
         for (ClientHandler agent : agents) {
             agent.sendMessage(message);
         }
-
- 
+        saveMessage(message);
     }
 
     // Sends a message to one specific agent (DM)
-    public static synchronized void sendDM(String targetCallsign, String message) {
+    public static synchronized void sendDM(String targetCallsign, String message, String senderCallsign) {
         //Look for that specific name within the list that matches what the user put in and have a dm conversation happen
         //note: This is only for that specific agent
-
-
+        for (ClientHandler agent : agents) {
+            if (agent.callsign.equalsIgnoreCase(targetCallsign)) {
+                agent.sendMessage("[DM from " + senderCallsign + "]: " + message);
+                return;
+            }
+        }
+        // Agent not found — notify sender
+        for (ClientHandler agent : agents) {
+            if (agent.callsign.equalsIgnoreCase(senderCallsign)) {
+                agent.sendMessage(">> Agent " + targetCallsign + " not found in lobby.");
+                return;
+            }
+        }
     }
 
     //This one is just for the exception for when someone else may take another persons name word for word
     public static synchronized boolean callsignTaken(String callsign) {
-        //This will just be a way for me to check if someone else has the same name as someone else and be able to ask them to change it. 
-        
-        for(ClientHandler agent : agents) {
+        //This will just be a way for me to check if someone else has the same name as someone else and be able to ask them to change it.
+        for (ClientHandler agent : agents) {
             if (agent.callsign.equalsIgnoreCase(callsign)) {
                 return true;
             }
         }
-        
         return false;
+    }
 
+    public static synchronized void saveMessage(String message) {
+        try (PrintWriter writer = new PrintWriter(new FileWriter("chathistory.txt", true))) {
+            writer.println(message);
+        } catch (IOException e) {
+            System.out.println("Could not save message to history.");
+        }
+    }
+
+    public static String loadHistory() {
+        StringBuilder history = new StringBuilder();
+        File file = new File("chathistory.txt");
+        if (!file.exists()) return "";
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                history.append(line).append("\n");
+            }
+        } catch (IOException e) {
+            System.out.println("Could not load chat history.");
+        }
+        return history.toString();
     }
 }
